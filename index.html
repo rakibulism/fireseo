@@ -1,21 +1,768 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AuditAI — Agentic SEO Platform</title>
-  <link rel="stylesheet" href="css/styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AuditAI — Agentic SEO Platform</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: #F5F5F7;
+    color: #111118;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  input, button, select { font-family: inherit; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D1D9; border-radius: 2px; }
+  button:focus, input:focus { outline: none; }
+  input::placeholder { color: #9999AA; }
+
+  /* Transitions */
+  .row-hover { transition: background 0.12s ease; }
+  .row-hover:hover { background: #F8F8FA !important; }
+  .btn-hover { transition: opacity 0.12s, transform 0.1s; }
+  .btn-hover:hover { opacity: 0.88; }
+  .btn-hover:active { transform: scale(0.97); }
+  .step-row { transition: opacity 0.3s ease; }
+  .nav-item { transition: background 0.12s, color 0.12s; }
+  .nav-item:hover { background: #F0F0F4 !important; }
+</style>
 </head>
 <body>
-  <div id="root"></div>
+<div id="root"></div>
+<script>
+const { useState, useEffect, useRef } = React;
+const e = React.createElement;
 
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+/* ─── Design tokens ─── */
+const T = {
+  bg:      '#F5F5F7',
+  surface: '#FFFFFF',
+  s2:      '#FAFAFA',
+  s3:      '#F3F3F6',
+  s4:      '#EAEAEF',
+  border:  '#E4E4EA',
+  borderHi:'#CDCDD8',
+  text:    '#111118',
+  sub:     '#5C5C70',
+  muted:   '#9595A8',
+  dim:     '#C8C8D4',
 
-  <script src="js/data.js"></script>
-  <script src="js/tokens.js"></script>
-  <script src="js/components.js"></script>
-  <script src="js/views.js"></script>
-  <script src="js/app.js"></script>
+  cyan:    '#0891B2',
+  cyanBg:  '#EFF9FC',
+  cyanBdr: '#BAE6F7',
+  green:   '#059669',
+  greenBg: '#ECFDF5',
+  greenBdr:'#A7F3D0',
+  purple:  '#7C3AED',
+  purpleBg:'#F5F0FF',
+  purpleBdr:'#DDD5FB',
+  amber:   '#B45309',
+  amberBg: '#FFFBEB',
+  amberBdr:'#FDE68A',
+  red:     '#DC2626',
+  redBg:   '#FEF2F2',
+  redBdr:  '#FECACA',
+  orange:  '#C2410C',
+  orangeBg:'#FFF7ED',
+  orangeBdr:'#FED7AA',
+  blue:    '#1D4ED8',
+  blueBg:  '#EFF6FF',
+  blueBdr: '#BFDBFE',
+};
+
+const catPalette = {
+  SEO:       { color: T.cyan,   bg: T.cyanBg,   bdr: T.cyanBdr },
+  AEO:       { color: T.purple, bg: T.purpleBg,  bdr: T.purpleBdr },
+  GEO:       { color: T.green,  bg: T.greenBg,   bdr: T.greenBdr },
+  Technical: { color: T.blue,   bg: T.blueBg,    bdr: T.blueBdr },
+  AI:        { color: T.amber,  bg: T.amberBg,   bdr: T.amberBdr },
+};
+
+const sevPalette = {
+  critical: { color: T.red,    bg: T.redBg,    bdr: T.redBdr },
+  high:     { color: T.orange, bg: T.orangeBg, bdr: T.orangeBdr },
+  medium:   { color: T.amber,  bg: T.amberBg,  bdr: T.amberBdr },
+  low:      { color: T.blue,   bg: T.blueBg,   bdr: T.blueBdr },
+};
+
+/* ─── Data ─── */
+const SITES = [
+  { id:1, name:'altumcode.com',  favicon:'A', audits:22, score:91, seo:88, aeo:72, geo:65, tech:95, issues:{critical:2,high:8,medium:18,low:10}, last:'2h ago',  trend:'+4' },
+  { id:2, name:'youtube.com',    favicon:'Y', audits:2,  score:77, seo:82, aeo:45, geo:38, tech:88, issues:{critical:1,high:5,medium:7,low:3},   last:'3d ago',  trend:'-1' },
+  { id:3, name:'66biolinks.com', favicon:'6', audits:2,  score:83, seo:79, aeo:68, geo:71, tech:90, issues:{critical:0,high:3,medium:4,low:2},   last:'1d ago',  trend:'+2' },
+  { id:4, name:'wikipedia.org',  favicon:'W', audits:2,  score:82, seo:91, aeo:85, geo:78, tech:73, issues:{critical:1,high:6,medium:6,low:3},   last:'5d ago',  trend:'+1' },
+  { id:5, name:'vercel.com',     favicon:'V', audits:1,  score:94, seo:92, aeo:89, geo:88, tech:97, issues:{critical:0,high:2,medium:3,low:1},   last:'1w ago',  trend:'+6' },
+];
+
+const STEPS = [
+  { id:'crawl',   label:'Discovering and crawling all pages',             cat:'Technical', finding:'Found 847 pages — 12 redirect chains, 3 broken links detected' },
+  { id:'meta',    label:'Analyzing title tags & meta descriptions',       cat:'SEO',       finding:'23 missing meta descriptions, 8 duplicate title tags found' },
+  { id:'content', label:'Evaluating content quality & depth signals',     cat:'SEO',       finding:'Thin content (<300 words) on 14 high-priority pages' },
+  { id:'kw',      label:'Keyword intent & semantic cluster mapping',      cat:'SEO',       finding:'Keyword cannibalization detected on 4 URL pairs' },
+  { id:'schema',  label:'Validating structured data (JSON-LD schemas)',   cat:'AEO',       finding:'FAQ schema missing on 31 high-traffic pages' },
+  { id:'snip',    label:'Featured snippet eligibility analysis',          cat:'AEO',       finding:'18 eligible pages — 0 currently optimized for snippets' },
+  { id:'qa',      label:'Extracting Q&A pairs for AI overview readiness', cat:'AEO',       finding:'Low answer-format coverage — need 45+ Q&A sections' },
+  { id:'entity',  label:'Testing LLM citability & entity authority',      cat:'GEO',       finding:'Brand entity not verified in knowledge graph' },
+  { id:'topical', label:'Topical authority mapping for generative search', cat:'GEO',      finding:'Missing content clusters: pricing, comparisons, alternatives' },
+  { id:'cwv',     label:'Core Web Vitals & page experience signals',      cat:'Technical', finding:'LCP 4.2s (poor) · CLS 0.18 (needs improvement)' },
+  { id:'links',   label:'Internal linking & backlink authority audit',    cat:'SEO',       finding:'127 orphaned pages, 3 broken internal links found' },
+  { id:'ai',      label:'Generating prioritized AI fix recommendations',  cat:'AI',        finding:'Fix plan ready — 38 issues ranked by impact score' },
+];
+
+const FIXES = [
+  { id:1, sev:'critical', cat:'AEO',       title:'Add FAQ schema to top 31 pages',                    impact:'+12 AEO', effort:'Medium', desc:'FAQ structured data enables rich results and AI overview eligibility. Affects 38% of organic traffic pages.' },
+  { id:2, sev:'critical', cat:'Technical', title:'Fix LCP — compress & lazy-load hero images',          impact:'+8 Tech', effort:'Low',    desc:'LCP of 4.2s is failing Core Web Vitals. Compress images and use next-gen formats to get below 2.5s.' },
+  { id:3, sev:'high',     cat:'GEO',       title:'Verify brand entity in Google Knowledge Graph',       impact:'+15 GEO', effort:'Low',    desc:'Unverified brand entity reduces appearance in generative AI answers. Add entity markup + authority signals.' },
+  { id:4, sev:'high',     cat:'SEO',       title:'Resolve keyword cannibalization on 4 URL pairs',      impact:'+6 SEO',  effort:'High',   desc:'Competing pages split ranking authority. Consolidate or implement canonical tags on affected pairs.' },
+  { id:5, sev:'high',     cat:'AEO',       title:'Add Q&A content blocks to 45 pages',                  impact:'+18 AEO', effort:'High',   desc:'Low answer-format coverage limits AI overview appearances. Add Q&A sections targeting informational queries.' },
+  { id:6, sev:'medium',   cat:'SEO',       title:'Write meta descriptions for 23 pages',                impact:'+4 SEO',  effort:'Low',    desc:'Missing meta descriptions reduce CTR from search results. AI-generated drafts available to speed this up.' },
+  { id:7, sev:'medium',   cat:'GEO',       title:'Build content cluster: pricing & alternatives pages', impact:'+9 GEO',  effort:'High',   desc:'Missing topical clusters reduce coverage in LLM-generated responses. Create supporting pages for each cluster.' },
+  { id:8, sev:'medium',   cat:'Technical', title:'Fix CLS — pin ad and embed dimensions',               impact:'+5 Tech', effort:'Low',    desc:'CLS of 0.18 causes layout shift. Set explicit width/height on embeds and dynamic content blocks.' },
+];
+
+/* ─── Primitives ─── */
+function Icon({ d, size = 14, sw = 1.75, color = 'currentColor' }) {
+  return e('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flexShrink: 0, display: 'block' } },
+    e('path', { d })
+  );
+}
+
+function Pill({ label, cat }) {
+  const p = catPalette[cat] || { color: T.sub, bg: T.s3, bdr: T.border };
+  return e('span', {
+    style: { fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', color: p.color, background: p.bg, border: `1px solid ${p.bdr}`, padding: '2px 7px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }
+  }, label);
+}
+
+function SevChip({ sev, count, label }) {
+  if (count === 0) return null;
+  const p = sevPalette[sev];
+  const text = label !== undefined
+    ? label
+    : count !== undefined
+      ? `${count} ${sev}`
+      : sev.charAt(0).toUpperCase() + sev.slice(1);
+  return e('span', {
+    style: { fontSize: 10, fontWeight: 600, letterSpacing: '0.03em', color: p.color, background: p.bg, border: `1px solid ${p.bdr}`, padding: '2px 7px', borderRadius: 4, whiteSpace: 'nowrap' }
+  }, text);
+}
+
+function ScoreRing({ score, size = 40, sw = 4 }) {
+  const r = (size - sw * 2) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const color = score >= 85 ? T.green : score >= 65 ? T.cyan : score >= 45 ? T.amber : T.red;
+  const trackColor = score >= 85 ? T.greenBdr : score >= 65 ? T.cyanBdr : score >= 45 ? T.amberBdr : T.redBdr;
+  const cx = size / 2, cy = size / 2;
+  return e('svg', { width: size, height: size, style: { transform: 'rotate(-90deg)', flexShrink: 0 } },
+    e('circle', { cx, cy, r, fill: 'none', stroke: trackColor, strokeWidth: sw }),
+    e('circle', { cx, cy, r, fill: 'none', stroke: color, strokeWidth: sw, strokeDasharray: circ, strokeDashoffset: offset, strokeLinecap: 'round' }),
+    e('text', { x: '50%', y: '50%', textAnchor: 'middle', dominantBaseline: 'middle', style: { fill: color, fontSize: size * 0.245, fontWeight: 700, fontFamily: 'inherit', transform: 'rotate(90deg)', transformOrigin: '50% 50%' } }, score)
+  );
+}
+
+function MiniBar({ score, width = 72 }) {
+  const color = score >= 85 ? T.green : score >= 65 ? T.cyan : score >= 45 ? T.amber : T.red;
+  return e('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+    e('div', { style: { width, height: 4, background: T.s4, borderRadius: 2, overflow: 'hidden' } },
+      e('div', { style: { width: `${score}%`, height: '100%', background: color, borderRadius: 2 } })
+    ),
+    e('span', { style: { fontSize: 12, color: T.sub, minWidth: 24, fontWeight: 500 } }, score)
+  );
+}
+
+function StatCard({ label, value, sub, color, icon }) {
+  return e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '14px 16px' } },
+    e('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 } },
+      e('span', { style: { fontSize: 11, color: T.muted, fontWeight: 500, letterSpacing: '0.03em' } }, label.toUpperCase()),
+      e('span', { style: { color, opacity: 0.55, display: 'flex' } }, e(Icon, { d: icon, size: 15 }))
+    ),
+    e('div', { style: { fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', color: T.text, marginBottom: 4 } }, value),
+    e('div', { style: { fontSize: 11, color: T.muted } }, sub)
+  );
+}
+
+function ScoreDetailCard({ label, score, note, color }) {
+  const c = color || (score >= 85 ? T.green : score >= 65 ? T.cyan : score >= 45 ? T.amber : T.red);
+  const bg = score >= 85 ? T.greenBg : score >= 65 ? T.cyanBg : score >= 45 ? T.amberBg : T.redBg;
+  return e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 9, padding: '14px 15px' } },
+    e('div', { style: { fontSize: 11, color: T.muted, fontWeight: 500, marginBottom: 10 } }, label),
+    e('div', { style: { fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: c, marginBottom: 8 } }, score),
+    e('div', { style: { height: 4, background: T.s4, borderRadius: 2, marginBottom: 8, overflow: 'hidden' } },
+      e('div', { style: { width: `${score}%`, height: '100%', background: c, borderRadius: 2 } })
+    ),
+    e('div', { style: { fontSize: 11, color: T.sub } }, note)
+  );
+}
+
+/* ─── Sidebar nav item ─── */
+function NavItem({ icon, label, active, badge, onClick }) {
+  return e('button', {
+    onClick,
+    className: 'nav-item',
+    style: {
+      width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+      padding: '7px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
+      textAlign: 'left', marginBottom: 2, fontSize: 13,
+      background: active ? T.cyanBg : 'transparent',
+      color: active ? T.cyan : T.sub,
+      fontWeight: active ? 500 : 400,
+    }
+  },
+    e('span', { style: { display: 'flex', color: active ? T.cyan : T.muted } }, e(Icon, { d: icon, size: 14 })),
+    e('span', null, label),
+    badge && e('span', { style: { marginLeft: 'auto', fontSize: 9, fontWeight: 700, background: T.red, color: '#fff', borderRadius: 8, padding: '1px 5px' } }, badge)
+  );
+}
+
+/* ════════════════════════════════════════════════
+   MAIN APP
+════════════════════════════════════════════════ */
+function App() {
+  const [view, setView] = useState('dashboard');
+  const [activeNav, setActiveNav] = useState('dashboard');
+  const [url, setUrl] = useState('');
+  const [auditUrl, setAuditUrl] = useState('');
+  const [step, setStep] = useState(-2);
+  const [done, setDone] = useState([]);
+  const [site, setSite] = useState(null);
+  const [tab, setTab] = useState('overview');
+  const stepsRef = useRef(null);
+
+  /* Agentic audit tick */
+  useEffect(() => {
+    if (view !== 'audit') return;
+    if (step === -2) { setStep(-1); return; }
+    if (step === -1) { const t = setTimeout(() => setStep(0), 400); return () => clearTimeout(t); }
+    if (step >= STEPS.length) return;
+    const dur = 550 + Math.random() * 500;
+    const t = setTimeout(() => { setDone(p => [...p, step]); setStep(p => p + 1); }, dur);
+    return () => clearTimeout(t);
+  }, [view, step]);
+
+  useEffect(() => { if (stepsRef.current) stepsRef.current.scrollTop = stepsRef.current.scrollHeight; }, [done]);
+
+  const startAudit = (u) => {
+    const target = u || url;
+    if (!target.trim()) return;
+    setAuditUrl(target);
+    setDone([]); setStep(-2); setView('audit');
+  };
+
+  const openReport = (s) => { setSite(s); setTab('overview'); setView('report'); };
+  const goBack = () => setView(activeNav === 'dashboard' ? 'dashboard' : 'dashboard');
+  const totalIssues = s => s.issues.critical + s.issues.high + s.issues.medium + s.issues.low;
+  const pct = step >= STEPS.length ? 100 : Math.round((done.length / STEPS.length) * 100);
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard',       icon: 'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z' },
+    { id: 'audits',    label: 'Audits',           icon: 'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM13 2v7h7' },
+    { id: 'sites',     label: 'Websites',         icon: 'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM2 12h20M12 2c-5 6-5 14 0 20M12 2c5 6 5 14 0 20' },
+    { id: 'intel',     label: 'Competitor Intel', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' },
+    { id: 'alerts',    label: 'Alerts',           icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', badge: '3' },
+    { id: 'fixes',     label: 'AI Fix Queue',     icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
+    { id: 'settings',  label: 'Settings',         icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z' },
+  ];
+
+  /* ── SIDEBAR ── */
+  const Sidebar = e('aside', {
+    style: { width: 216, background: T.surface, borderRight: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }
+  },
+    /* Logo */
+    e('div', { style: { padding: '18px 14px 14px', borderBottom: `1px solid ${T.border}`, marginBottom: 8 } },
+      e('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+        e('div', { style: { width: 30, height: 30, borderRadius: 8, background: T.cyan, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 } },
+          e(Icon, { d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', size: 14, sw: 2, color: '#fff' })
+        ),
+        e('div', null,
+          e('div', { style: { fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em', color: T.text } }, 'AuditAI'),
+          e('div', { style: { fontSize: 10, color: T.muted } }, 'Agentic SEO Platform')
+        )
+      )
+    ),
+    /* Nav */
+    e('nav', { style: { padding: '0 8px', flex: 1 } },
+      ...navItems.map(item => e(NavItem, {
+        key: item.id, label: item.label, icon: item.icon, badge: item.badge,
+        active: activeNav === item.id,
+        onClick: () => { setActiveNav(item.id); if (item.id === 'dashboard') setView('dashboard'); }
+      }))
+    ),
+    /* User */
+    e('div', { style: { padding: '10px 12px', borderTop: `1px solid ${T.border}` } },
+      e('div', { style: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px', borderRadius: 8, background: T.s2, border: `1px solid ${T.border}`, cursor: 'pointer' } },
+        e('div', { style: { width: 28, height: 28, borderRadius: '50%', background: T.cyanBg, border: `1px solid ${T.cyanBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: T.cyan, flexShrink: 0 } }, 'AC'),
+        e('div', null,
+          e('div', { style: { fontSize: 12, fontWeight: 600, color: T.text } }, 'AltumCode'),
+          e('div', { style: { fontSize: 10, color: T.muted } }, 'Pro Plan')
+        ),
+        e('span', { style: { marginLeft: 'auto', display: 'flex', color: T.muted } }, e(Icon, { d: 'M8 9l4-4 4 4m0 6l-4 4-4-4', size: 13 }))
+      )
+    )
+  );
+
+  /* ══════════════════════════════
+     DASHBOARD VIEW
+  ══════════════════════════════ */
+  const DashboardView = e('div', { style: { padding: '28px 32px', maxWidth: 1100 } },
+    /* Header */
+    e('div', { style: { marginBottom: 22 } },
+      e('h1', { style: { fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: T.text, marginBottom: 3 } }, 'Dashboard'),
+      e('p', { style: { fontSize: 13, color: T.muted } }, 'Agentic SEO · AEO · GEO audit platform')
+    ),
+
+    /* Audit input bar */
+    e('div', { style: { display: 'flex', gap: 8, marginBottom: 24, padding: 14, background: T.surface, borderRadius: 12, border: `1px solid ${T.border}` } },
+      e('div', { style: { flex: 1, position: 'relative' } },
+        e('span', { style: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, display: 'flex', pointerEvents: 'none' } },
+          e(Icon, { d: 'M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', size: 14 })
+        ),
+        e('input', {
+          value: url,
+          onChange: ev => setUrl(ev.target.value),
+          onKeyDown: ev => ev.key === 'Enter' && startAudit(),
+          placeholder: 'Enter a URL to audit — https://yoursite.com',
+          style: { width: '100%', background: T.s2, border: `1px solid ${T.border}`, color: T.text, borderRadius: 8, padding: '10px 12px 10px 36px', fontSize: 13 }
+        })
+      ),
+      /* Config btn */
+      e('button', { className: 'btn-hover', style: { padding: '0 13px', background: T.s2, border: `1px solid ${T.border}`, borderRadius: 8, cursor: 'pointer', color: T.sub, display: 'flex', alignItems: 'center' } },
+        e(Icon, { d: 'M12 2a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2zM12 10a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2zM12 18a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2z', size: 15 })
+      ),
+      e('button', {
+        onClick: () => startAudit(),
+        className: 'btn-hover',
+        style: { padding: '0 20px', background: T.cyan, color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }
+      },
+        e(Icon, { d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', size: 13, sw: 2, color: '#fff' }),
+        'Start Audit'
+      )
+    ),
+
+    /* Stat cards */
+    e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 24 } },
+      e(StatCard, { label: 'Sites monitored',   value: '8',   sub: '+2 added this month',   color: T.cyan,   icon: 'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z' }),
+      e(StatCard, { label: 'Avg health score',  value: '85',  sub: '+3 pts vs last week',    color: T.green,  icon: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+      e(StatCard, { label: 'Critical issues',   value: '4',   sub: '−2 resolved today',      color: T.red,    icon: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' }),
+      e(StatCard, { label: 'Audits this month', value: '12',  sub: '3 scheduled tomorrow',   color: T.purple, icon: 'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z' })
+    ),
+
+    /* Sites table */
+    e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' } },
+      /* Table header */
+      e('div', { style: { padding: '12px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        e('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+          e('span', { style: { fontWeight: 600, fontSize: 13, color: T.text } }, 'Monitored Websites'),
+          e('span', { style: { fontSize: 11, color: T.muted, background: T.s3, padding: '2px 8px', borderRadius: 6, border: `1px solid ${T.border}` } }, `${SITES.length} sites`)
+        ),
+        e('div', { style: { display: 'flex', gap: 5, alignItems: 'center' } },
+          e(Pill, { label: 'SEO', cat: 'SEO' }),
+          e(Pill, { label: 'AEO', cat: 'AEO' }),
+          e(Pill, { label: 'GEO', cat: 'GEO' }),
+          e('span', { style: { fontSize: 11, color: T.dim } }, '← score layers')
+        )
+      ),
+      /* Col headers */
+      e('div', { style: { display: 'grid', gridTemplateColumns: '2.2fr 64px 100px 100px 100px 1.6fr 100px', padding: '8px 20px', borderBottom: `1px solid ${T.s4}`, background: T.s2 } },
+        ['Website', 'Score', 'SEO', 'AEO', 'GEO', 'Issues', ''].map((h, i) =>
+          e('div', { key: i, style: { fontSize: 10, fontWeight: 600, color: T.muted, letterSpacing: '0.06em', textTransform: 'uppercase' } }, h)
+        )
+      ),
+      /* Rows */
+      ...SITES.map((s, i) =>
+        e('div', {
+          key: s.id,
+          className: 'row-hover',
+          onClick: () => openReport(s),
+          style: { display: 'grid', gridTemplateColumns: '2.2fr 64px 100px 100px 100px 1.6fr 100px', padding: '13px 20px', borderBottom: i < SITES.length - 1 ? `1px solid ${T.border}` : 'none', alignItems: 'center', cursor: 'pointer' }
+        },
+          /* Name */
+          e('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+            e('div', { style: { width: 32, height: 32, borderRadius: 8, background: T.cyanBg, border: `1px solid ${T.cyanBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: T.cyan, flexShrink: 0 } }, s.favicon),
+            e('div', null,
+              e('div', { style: { fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 1 } }, s.name),
+              e('div', { style: { fontSize: 11, color: T.muted } }, `${s.audits} audits · last ${s.last}`)
+            )
+          ),
+          /* Score */
+          e(ScoreRing, { score: s.score, size: 38, sw: 3.5 }),
+          /* SEO bar */
+          e(MiniBar, { score: s.seo }),
+          /* AEO bar */
+          e(MiniBar, { score: s.aeo }),
+          /* GEO bar */
+          e(MiniBar, { score: s.geo }),
+          /* Issues */
+          e('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 3 } },
+            s.issues.critical > 0 && e(SevChip, { sev: 'critical', count: s.issues.critical }),
+            s.issues.high > 0 && e(SevChip, { sev: 'high', count: s.issues.high }),
+            s.issues.medium > 0 && e(SevChip, { sev: 'medium', count: s.issues.medium })
+          ),
+          /* Actions */
+          e('div', { style: { display: 'flex', gap: 5, justifyContent: 'flex-end' } },
+            e('button', {
+              onClick: ev => { ev.stopPropagation(); startAudit(`https://${s.name}`); },
+              className: 'btn-hover',
+              style: { padding: '5px 11px', background: 'transparent', border: `1px solid ${T.border}`, color: T.sub, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }
+            }, e(Icon, { d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', size: 11, sw: 2 }), 'Audit'),
+            e('button', {
+              onClick: ev => { ev.stopPropagation(); openReport(s); },
+              className: 'btn-hover',
+              style: { padding: '5px 11px', background: 'transparent', border: `1px solid ${T.border}`, color: T.sub, borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 500 }
+            }, 'Report')
+          )
+        )
+      )
+    )
+  );
+
+  /* ══════════════════════════════
+     AUDIT VIEW
+  ══════════════════════════════ */
+  const AuditView = e('div', { style: { padding: '28px 32px', maxWidth: 820 } },
+    /* Back */
+    e('button', { onClick: () => setView('dashboard'), className: 'btn-hover', style: { background: 'none', border: 'none', color: T.sub, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 22, padding: 0 } },
+      e(Icon, { d: 'M19 12H5M12 5l-7 7 7 7', size: 14 }), 'Back to dashboard'
+    ),
+    /* Audit header */
+    e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px', marginBottom: 16 } },
+      e('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 } },
+        e('div', null,
+          e('div', { style: { fontSize: 10, fontWeight: 600, color: T.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 } }, 'Running audit on'),
+          e('div', { style: { fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: T.text } }, auditUrl || 'https://example.com')
+        ),
+        step < STEPS.length
+          ? e('div', { style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: T.cyan, background: T.cyanBg, padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.cyanBdr}` } },
+              e('span', { style: { width: 6, height: 6, borderRadius: '50%', background: T.cyan, display: 'inline-block' } }),
+              'Running'
+            )
+          : e('div', { style: { fontSize: 12, fontWeight: 600, color: T.green, background: T.greenBg, padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.greenBdr}` } }, '✓ Complete')
+      ),
+      /* Progress bar */
+      e('div', { style: { height: 6, background: T.s4, borderRadius: 3, marginBottom: 8, overflow: 'hidden' } },
+        e('div', { style: { height: '100%', width: `${pct}%`, background: step < STEPS.length ? T.cyan : T.green, borderRadius: 3, transition: 'width 0.45s ease' } })
+      ),
+      e('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.muted } },
+        e('span', null, `${done.length} / ${STEPS.length} checks complete`),
+        e('span', { style: { fontWeight: 600 } }, `${pct}%`)
+      )
+    ),
+    /* Legend */
+    e('div', { style: { display: 'flex', gap: 5, marginBottom: 12, flexWrap: 'wrap' } },
+      Object.keys(catPalette).map(cat => e(Pill, { key: cat, label: cat, cat }))
+    ),
+    /* Steps list */
+    e('div', {
+      ref: stepsRef,
+      style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', maxHeight: 460, overflowY: 'auto' }
+    },
+      ...STEPS.map((s, i) => {
+        const isCom = done.includes(i);
+        const isAct = step === i && !isCom;
+        const isPen = !isCom && !isAct;
+        const p = catPalette[s.cat];
+        return e('div', {
+          key: s.id, className: 'step-row',
+          style: { padding: '11px 16px', borderBottom: i < STEPS.length - 1 ? `1px solid ${T.border}` : 'none', display: 'flex', alignItems: 'flex-start', gap: 11, opacity: isPen ? 0.35 : 1 }
+        },
+          /* Status dot */
+          e('div', {
+            style: {
+              width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+              background: isCom ? T.greenBg : isAct ? T.cyanBg : T.s3,
+              border: `1.5px solid ${isCom ? T.greenBdr : isAct ? T.cyanBdr : T.dim}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }
+          },
+            isCom
+              ? e('svg', { width: 9, height: 9, viewBox: '0 0 24 24', fill: 'none', stroke: T.green, strokeWidth: 3 }, e('polyline', { points: '20 6 9 17 4 12' }))
+              : isAct
+              ? e('div', { style: { width: 6, height: 6, borderRadius: '50%', background: T.cyan } })
+              : e('div', { style: { width: 5, height: 5, borderRadius: '50%', background: T.dim } })
+          ),
+          e('div', { style: { flex: 1 } },
+            e('div', { style: { display: 'flex', alignItems: 'center', gap: 7, marginBottom: isCom ? 4 : 0, flexWrap: 'wrap' } },
+              e('span', { style: { fontSize: 13, color: isCom ? T.text : isAct ? T.cyan : T.sub, fontWeight: isAct ? 600 : 400 } }, s.label),
+              e(Pill, { label: s.cat, cat: s.cat })
+            ),
+            isCom && e('div', { style: { fontSize: 11, color: T.muted, lineHeight: 1.4 } },
+              e('span', { style: { color: T.dim, marginRight: 5 } }, '↳'),
+              s.finding
+            )
+          )
+        );
+      })
+    ),
+    /* Complete CTA */
+    step >= STEPS.length && e('div', { style: { marginTop: 14, padding: '14px 18px', background: T.greenBg, border: `1px solid ${T.greenBdr}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },
+      e('div', null,
+        e('div', { style: { fontSize: 14, fontWeight: 600, color: T.green, marginBottom: 3 } }, 'Audit complete — 38 issues found across 12 categories'),
+        e('div', { style: { fontSize: 12, color: T.sub } }, '2 critical · 8 high · 18 medium · 10 low')
+      ),
+      e('button', {
+        onClick: () => openReport(SITES[0]),
+        className: 'btn-hover',
+        style: { padding: '9px 18px', background: T.green, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }
+      }, 'View Full Report →')
+    )
+  );
+
+  /* ══════════════════════════════
+     REPORT VIEW
+  ══════════════════════════════ */
+  const tabs = ['overview', 'seo', 'aeo', 'geo', 'technical', 'ai-fixes'];
+
+  const ReportView = site && e('div', { style: { padding: '28px 32px', maxWidth: 980 } },
+    /* Back */
+    e('button', { onClick: () => setView('dashboard'), className: 'btn-hover', style: { background: 'none', border: 'none', color: T.sub, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 22, padding: 0 } },
+      e(Icon, { d: 'M19 12H5M12 5l-7 7 7 7', size: 14 }), 'Back to dashboard'
+    ),
+    /* Site header */
+    e('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 } },
+      e('div', { style: { display: 'flex', alignItems: 'center', gap: 13 } },
+        e('div', { style: { width: 42, height: 42, borderRadius: 10, background: T.cyanBg, border: `1px solid ${T.cyanBdr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: T.cyan } }, site.favicon),
+        e('div', null,
+          e('h1', { style: { margin: '0 0 3px', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: T.text } }, site.name),
+          e('div', { style: { fontSize: 12, color: T.muted } }, `${site.audits} audits · Last audit: ${site.last}`)
+        )
+      ),
+      e('div', { style: { display: 'flex', gap: 7 } },
+        e('button', { className: 'btn-hover', style: { padding: '8px 14px', background: T.s2, color: T.sub, border: `1px solid ${T.border}`, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 } },
+          e(Icon, { d: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13', size: 13 }), 'Export'
+        ),
+        e('button', {
+          onClick: () => startAudit(`https://${site.name}`),
+          className: 'btn-hover',
+          style: { padding: '8px 16px', background: T.cyan, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }
+        }, e(Icon, { d: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', size: 12, sw: 2.5, color: '#fff' }), 'Re-audit')
+      )
+    ),
+
+    /* Score cards row */
+    e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 22 } },
+      [
+        { label: 'Overall health', score: site.score },
+        { label: 'SEO score',      score: site.seo,  cat: 'SEO' },
+        { label: 'AEO score',      score: site.aeo,  cat: 'AEO' },
+        { label: 'GEO score',      score: site.geo,  cat: 'GEO' },
+      ].map((item, i) => {
+        const color = item.score >= 85 ? T.green : item.score >= 65 ? T.cyan : item.score >= 45 ? T.amber : T.red;
+        const bg = item.score >= 85 ? T.greenBg : item.score >= 65 ? T.cyanBg : item.score >= 45 ? T.amberBg : T.redBg;
+        const bdr = item.score >= 85 ? T.greenBdr : item.score >= 65 ? T.cyanBdr : item.score >= 45 ? T.amberBdr : T.redBdr;
+        return e('div', {
+          key: i,
+          style: { background: T.surface, border: `1px solid ${bdr}`, borderRadius: 10, padding: '16px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: item.cat ? 'pointer' : 'default' },
+          onClick: () => item.cat && setTab(item.cat.toLowerCase())
+        },
+          e('div', { style: { fontSize: 11, color: T.muted, fontWeight: 500, letterSpacing: '0.03em', textTransform: 'uppercase' } }, item.label),
+          e(ScoreRing, { score: item.score, size: 72, sw: 6 }),
+          item.cat && e(Pill, { label: item.cat, cat: item.cat })
+        );
+      })
+    ),
+
+    /* Tabs */
+    e('div', { style: { display: 'flex', gap: 0, borderBottom: `1px solid ${T.border}`, marginBottom: 18 } },
+      ...tabs.map(t =>
+        e('button', {
+          key: t, onClick: () => setTab(t),
+          style: {
+            padding: '9px 15px', background: 'none', border: 'none',
+            borderBottom: `2px solid ${tab === t ? T.cyan : 'transparent'}`,
+            cursor: 'pointer', fontSize: 12.5, fontWeight: tab === t ? 600 : 400,
+            color: tab === t ? T.cyan : T.sub, marginBottom: -1, whiteSpace: 'nowrap'
+          }
+        }, t === 'ai-fixes' ? '✦ AI Fixes' : t.toUpperCase())
+      )
+    ),
+
+    /* ── Overview tab ── */
+    tab === 'overview' && e('div', { style: { display: 'grid', gridTemplateColumns: '1fr 300px', gap: 14 } },
+      /* Issues breakdown */
+      e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '16px 18px' } },
+        e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 16 } }, 'Issue severity breakdown'),
+        ...[
+          { sev: 'Critical', count: site.issues.critical, color: T.red,    bg: T.redBg,    desc: 'Blocks rankings or indexing' },
+          { sev: 'High',     count: site.issues.high,     color: T.orange, bg: T.orangeBg, desc: 'Significant traffic impact' },
+          { sev: 'Medium',   count: site.issues.medium,   color: T.amber,  bg: T.amberBg,  desc: 'Optimization opportunities' },
+          { sev: 'Low',      count: site.issues.low,      color: T.blue,   bg: T.blueBg,   desc: 'Minor refinements' },
+        ].map((item, i) =>
+          e('div', { key: i, style: { marginBottom: 14 } },
+            e('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 } },
+              e('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                e('div', { style: { width: 8, height: 8, borderRadius: '50%', background: item.color } }),
+                e('span', { style: { fontSize: 12, color: T.sub } }, `${item.sev} — ${item.desc}`)
+              ),
+              e('span', { style: { fontSize: 14, fontWeight: 700, color: item.color } }, item.count)
+            ),
+            e('div', { style: { height: 5, background: T.s4, borderRadius: 3, overflow: 'hidden' } },
+              e('div', { style: { height: '100%', width: `${(item.count / totalIssues(site)) * 100}%`, background: item.color, borderRadius: 3, opacity: 0.75 } })
+            )
+          )
+        )
+      ),
+      /* Top AI recs */
+      e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '14px 16px' } },
+        e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7 } },
+          e('span', { style: { color: T.amber, display: 'flex' } }, e(Icon, { d: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', size: 14, color: T.amber })),
+          'Top AI recommendations'
+        ),
+        ...FIXES.slice(0, 3).map(fix =>
+          e('div', {
+            key: fix.id, onClick: () => setTab('ai-fixes'),
+            style: { marginBottom: 8, padding: '10px 11px', background: T.s2, borderRadius: 8, border: `1px solid ${T.border}`, cursor: 'pointer' }
+          },
+            e('div', { style: { display: 'flex', gap: 4, marginBottom: 6 } },
+              e(SevChip, { sev: fix.sev }),
+              e(Pill, { label: fix.cat, cat: fix.cat })
+            ),
+            e('div', { style: { fontSize: 12, fontWeight: 500, color: T.text, lineHeight: 1.4, marginBottom: 4 } }, fix.title),
+            e('div', { style: { fontSize: 11, color: T.green, fontWeight: 600 } }, fix.impact)
+          )
+        ),
+        e('button', {
+          onClick: () => setTab('ai-fixes'),
+          className: 'btn-hover',
+          style: { width: '100%', padding: '8px', background: 'transparent', border: `1px solid ${T.border}`, color: T.sub, borderRadius: 7, cursor: 'pointer', fontSize: 11, marginTop: 4 }
+        }, `View all ${FIXES.length} AI recommendations →`)
+      )
+    ),
+
+    /* ── SEO tab ── */
+    tab === 'seo' && e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '18px 20px' } },
+      e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 3 } }, 'Traditional SEO Analysis'),
+      e('div', { style: { fontSize: 12, color: T.muted, marginBottom: 18 } }, 'On-page, off-page, technical, and content SEO signals.'),
+      e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 } },
+        ...[
+          { label: 'On-page SEO',      score: site.seo, note: '23 missing meta descriptions' },
+          { label: 'Link authority',   score: 74,       note: '127 orphaned pages found' },
+          { label: 'Content quality',  score: 81,       note: 'Thin content on 14 pages' },
+          { label: 'Keyword targeting',score: 76,       note: '4 cannibalization pairs' },
+          { label: 'Crawlability',     score: 92,       note: 'Clean sitemap & robots.txt' },
+          { label: 'Mobile indexing',  score: 94,       note: 'Fully mobile-first compliant' },
+        ].map((item, i) => e(ScoreDetailCard, { key: i, ...item }))
+      )
+    ),
+
+    /* ── AEO tab ── */
+    tab === 'aeo' && e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '18px 20px' } },
+      e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 3 } }, 'Answer Engine Optimization'),
+      e('div', { style: { fontSize: 12, color: T.muted, marginBottom: 18 } }, 'Featured snippets, structured data, AI overview eligibility, and voice search readiness.'),
+      e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 } },
+        ...[
+          { label: 'Schema coverage',         score: 34, note: '31 pages missing FAQ schema' },
+          { label: 'Snippet eligibility',      score: 18, note: '18 eligible, 0 optimized' },
+          { label: 'AI overview readiness',    score: 22, note: 'Low Q&A format coverage' },
+          { label: 'Voice search fit',         score: 55, note: 'Moderate conversational content' },
+          { label: 'Answer format coverage',   score: 29, note: 'Need more direct answer blocks' },
+          { label: 'Entity markup',            score: 48, note: 'Partial entity definitions' },
+        ].map((item, i) => e(ScoreDetailCard, { key: i, ...item }))
+      )
+    ),
+
+    /* ── GEO tab ── */
+    tab === 'geo' && e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '18px 20px' } },
+      e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 3 } }, 'Generative Engine Optimization'),
+      e('div', { style: { fontSize: 12, color: T.muted, marginBottom: 18 } }, 'How well your content appears in LLM-generated answers — Perplexity, ChatGPT Search, Google AI Overviews.'),
+      e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 } },
+        ...[
+          { label: 'Entity authority',    score: 45, note: 'Brand not in knowledge graph' },
+          { label: 'LLM citability',      score: 38, note: 'Low citation signals from AI tools' },
+          { label: 'Topical coverage',    score: 71, note: 'Missing: pricing, comparisons, alternatives' },
+          { label: 'Structural clarity',  score: 88, note: 'Good LLM-parseable content structure' },
+          { label: 'Freshness signals',   score: 62, note: 'Some stale content clusters found' },
+          { label: 'Trust & authority',   score: 56, note: 'Limited expert authorship signals' },
+        ].map((item, i) =>
+          e('div', {
+            key: i,
+            style: { background: T.s2, border: `1px solid ${T.border}`, borderRadius: 9, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }
+          },
+            e('div', null,
+              e('div', { style: { fontSize: 13, fontWeight: 500, color: T.text, marginBottom: 4 } }, item.label),
+              e('div', { style: { fontSize: 11, color: T.muted } }, item.note)
+            ),
+            e('div', { style: { fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', color: item.score < 50 ? T.red : item.score < 70 ? T.amber : T.green, flexShrink: 0 } }, item.score)
+          )
+        )
+      )
+    ),
+
+    /* ── Technical tab ── */
+    tab === 'technical' && e('div', { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '18px 20px' } },
+      e('div', { style: { fontWeight: 600, fontSize: 13, color: T.text, marginBottom: 3 } }, 'Technical SEO & Core Web Vitals'),
+      e('div', { style: { fontSize: 12, color: T.muted, marginBottom: 18 } }, 'Performance, page experience, crawlability, and indexing health.'),
+      e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 } },
+        ...[
+          { label: 'LCP',            val: '4.2s',  status: 'poor', note: 'Target < 2.5s — failing' },
+          { label: 'FID / INP',      val: '62ms',  status: 'good', note: 'Within threshold' },
+          { label: 'CLS',            val: '0.18',  status: 'warn', note: 'Target < 0.1' },
+          { label: 'TTFB',           val: '380ms', status: 'good', note: 'Good server response' },
+          { label: 'Pages crawled',  val: '847',   status: 'info', note: '12 redirect chains found' },
+          { label: 'Broken links',   val: '3',     status: 'warn', note: '3 internal 404 errors' },
+        ].map((item, i) => {
+          const c = item.status === 'poor' ? T.red : item.status === 'warn' ? T.amber : item.status === 'good' ? T.green : T.cyan;
+          const bg = item.status === 'poor' ? T.redBg : item.status === 'warn' ? T.amberBg : item.status === 'good' ? T.greenBg : T.cyanBg;
+          const bdr = item.status === 'poor' ? T.redBdr : item.status === 'warn' ? T.amberBdr : item.status === 'good' ? T.greenBdr : T.cyanBdr;
+          return e('div', { key: i, style: { background: bg, border: `1px solid ${bdr}`, borderRadius: 9, padding: '14px 15px' } },
+            e('div', { style: { fontSize: 11, color: T.sub, fontWeight: 500, marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase' } }, item.label),
+            e('div', { style: { fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', color: c, marginBottom: 4 } }, item.val),
+            e('div', { style: { fontSize: 11, color: T.sub } }, item.note)
+          );
+        })
+      )
+    ),
+
+    /* ── AI Fixes tab ── */
+    tab === 'ai-fixes' && e('div', null,
+      e('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 12, color: T.muted } },
+        e(Icon, { d: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', size: 14, color: T.amber }),
+        e('span', { style: { fontWeight: 500, color: T.sub } }, 'AI-generated fix plan — sorted by impact score')
+      ),
+      e('div', { style: { display: 'flex', flexDirection: 'column', gap: 9 } },
+        ...FIXES.map(fix =>
+          e('div', { key: fix.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: '16px 18px' } },
+            e('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 14 } },
+              e('div', { style: { flex: 1 } },
+                e('div', { style: { display: 'flex', gap: 5, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' } },
+                  e(SevChip, { sev: fix.sev }),
+                  e(Pill, { label: fix.cat, cat: fix.cat }),
+                  e('span', { style: { fontSize: 11, color: T.muted } }, `Effort: ${fix.effort}`)
+                ),
+                e('div', { style: { fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 5 } }, fix.title),
+                e('div', { style: { fontSize: 12, color: T.sub, lineHeight: 1.6 } }, fix.desc)
+              ),
+              e('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 } },
+                e('div', { style: { fontSize: 12, fontWeight: 700, color: T.green, background: T.greenBg, padding: '4px 10px', borderRadius: 6, border: `1px solid ${T.greenBdr}` } }, fix.impact),
+                e('button', {
+                  className: 'btn-hover',
+                  style: { padding: '7px 14px', background: T.amber, color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }
+                }, '✦ AI Fix')
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+
+  return e('div', { style: { display: 'flex', height: '100%', overflow: 'hidden' } },
+    Sidebar,
+    e('main', { style: { flex: 1, overflow: 'auto', background: T.bg } },
+      view === 'dashboard' && DashboardView,
+      view === 'audit'     && AuditView,
+      view === 'report'    && ReportView,
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+</script>
 </body>
 </html>
